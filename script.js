@@ -1,18 +1,20 @@
 // JSON to TOON Converter
+// TOON = Token-Oriented Object Notation
+// A compact format that reduces token usage for LLMs
 
 // DOM Elements
 const jsonInput = document.getElementById('jsonInput');
 const toonOutput = document.getElementById('toonOutput');
 const convertBtn = document.getElementById('convertBtn');
+const prettifyBtn = document.getElementById('prettifyBtn');
 const clearInput = document.getElementById('clearInput');
 const copyOutput = document.getElementById('copyOutput');
 const downloadOutput = document.getElementById('downloadOutput');
 const fileInput = document.getElementById('fileInput');
-const prettyPrint = document.getElementById('prettyPrint');
-const sortKeys = document.getElementById('sortKeys');
 
 // Event Listeners
 convertBtn.addEventListener('click', convertJsonToToon);
+prettifyBtn.addEventListener('click', prettifyJson);
 clearInput.addEventListener('click', () => {
     jsonInput.value = '';
     toonOutput.value = '';
@@ -29,76 +31,124 @@ jsonInput.addEventListener('keydown', (e) => {
 });
 
 /**
- * Convert JSON value to TOON format with type information
+ * Prettify JSON input
  */
-function jsonToToon(value) {
-    // Null
-    if (value === null) {
-        return { type: 'null', value: null };
+function prettifyJson() {
+    const inputText = jsonInput.value.trim();
+
+    if (!inputText) {
+        showToast('Please enter some JSON data', 'error');
+        return;
     }
 
-    // Boolean
-    if (typeof value === 'boolean') {
-        return { type: 'boolean', value: value };
+    try {
+        const jsonData = JSON.parse(inputText);
+        jsonInput.value = JSON.stringify(jsonData, null, 2);
+        showToast('JSON prettified!', 'success');
+    } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
     }
+}
 
-    // Number
-    if (typeof value === 'number') {
-        const toonValue = { type: 'number', value: value };
-        // Add additional metadata for special number types
-        if (Number.isInteger(value)) {
-            toonValue.subtype = 'integer';
-        } else {
-            toonValue.subtype = 'float';
-        }
-        if (!Number.isFinite(value)) {
-            toonValue.special = value === Infinity ? 'infinity' : value === -Infinity ? '-infinity' : 'nan';
-        }
-        return toonValue;
-    }
-
-    // String
+/**
+ * Escape a value for TOON format
+ */
+function escapeValue(value) {
+    if (value === null) return 'null';
+    if (typeof value === 'boolean') return value.toString();
+    if (typeof value === 'number') return value.toString();
     if (typeof value === 'string') {
-        return { type: 'string', value: value };
+        // Escape commas and newlines in strings
+        return value.replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    }
+    return String(value);
+}
+
+/**
+ * Convert JSON array of objects to TOON format
+ * Format: arrayName[count]{field1,field2,...}:\n  value1,value2,...\n  value1,value2,...
+ */
+function arrayToToon(arr, name = 'data', indent = 0) {
+    if (!Array.isArray(arr) || arr.length === 0) {
+        return `${name}[0]`;
     }
 
-    // Array
-    if (Array.isArray(value)) {
-        return {
-            type: 'array',
-            length: value.length,
-            value: value.map(item => jsonToToon(item))
-        };
-    }
-
-    // Object
-    if (typeof value === 'object') {
-        const toonObject = {
-            type: 'object',
-            value: {}
-        };
-
-        let keys = Object.keys(value);
+    const indentStr = '  '.repeat(indent);
+    
+    // Check if array contains objects with same structure
+    const firstItem = arr[0];
+    
+    if (typeof firstItem === 'object' && firstItem !== null && !Array.isArray(firstItem)) {
+        // Array of objects - use compact TOON format
+        const keys = Object.keys(firstItem);
         
-        // Sort keys if option is enabled
-        if (sortKeys.checked) {
-            keys = keys.sort();
+        // Check if all objects have the same keys
+        const allSameKeys = arr.every(item => {
+            if (typeof item !== 'object' || item === null) return false;
+            const itemKeys = Object.keys(item);
+            return keys.length === itemKeys.length && 
+                   keys.every(k => itemKeys.includes(k));
+        });
+
+        if (allSameKeys) {
+            let result = `${name}[${arr.length}]{${keys.join(',')}}:`;
+            
+            arr.forEach(item => {
+                const values = keys.map(key => escapeValue(item[key]));
+                result += `\n${indentStr}  ${values.join(',')}`;
+            });
+            
+            return result;
         }
-
-        for (const key of keys) {
-            toonObject.value[key] = jsonToToon(value[key]);
+    }
+    
+    // Array of primitives or mixed types - use simplified format
+    let result = `${name}[${arr.length}]:`;
+    arr.forEach(item => {
+        if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+            result += `\n${indentStr}  {${objectToInlineToon(item)}}`;
+        } else if (Array.isArray(item)) {
+            result += `\n${indentStr}  [${item.map(escapeValue).join(',')}]`;
+        } else {
+            result += `\n${indentStr}  ${escapeValue(item)}`;
         }
+    });
+    
+    return result;
+}
 
-        return toonObject;
-    }
+/**
+ * Convert object to inline TOON format
+ */
+function objectToInlineToon(obj) {
+    const keys = sortKeys.checked ? Object.keys(obj).sort() : Object.keys(obj);
+    return keys.map(key => `${key}:${escapeValue(obj[key])}`).join(',');
+}
 
-    // Undefined (shouldn't happen in valid JSON, but handle it)
-    if (value === undefined) {
-        return { type: 'undefined', value: undefined };
-    }
-
-    // Fallback for unknown types
-    return { type: 'unknown', value: String(value) };
+/**
+ * Convert JSON object to TOON format
+ */
+function objectToToon(obj, indent = 0) {
+    const indentStr = '  '.repeat(indent);
+    const keys = Object.keys(obj);
+    
+    let result = '';
+    
+    keys.forEach((key, index) => {
+        const value = obj[key];
+        
+        if (Array.isArray(value)) {
+            if (index > 0) result += '\n';
+            result += indentStr + arrayToToon(value, key, indent);
+        } else if (typeof value === 'object' && value !== null) {
+            if (index > 0) result += '\n';
+            result += `${indentStr}${key}:\n${objectToToon(value, indent + 1)}`;
+        } else {
+            result += `${indentStr}${key}: ${escapeValue(value)}\n`;
+        }
+    });
+    
+    return result;
 }
 
 /**
@@ -117,17 +167,18 @@ function convertJsonToToon() {
         const jsonData = JSON.parse(inputText);
 
         // Convert to TOON
-        const toonData = jsonToToon(jsonData);
-
-        // Format output
-        let output;
-        if (prettyPrint.checked) {
-            output = JSON.stringify(toonData, null, 2);
+        let toonData;
+        
+        if (Array.isArray(jsonData)) {
+            toonData = arrayToToon(jsonData, 'data');
+        } else if (typeof jsonData === 'object' && jsonData !== null) {
+            toonData = objectToToon(jsonData);
         } else {
-            output = JSON.stringify(toonData);
+            // Primitive value
+            toonData = escapeValue(jsonData);
         }
 
-        toonOutput.value = output;
+        toonOutput.value = toonData.trim();
         showToast('Conversion successful!', 'success');
 
     } catch (error) {
@@ -237,29 +288,11 @@ function showToast(message, type = 'success') {
 }
 
 // Initialize with example data
-const exampleJson = `{
-  "name": "John Doe",
-  "age": 30,
-  "email": "john@example.com",
-  "active": true,
-  "balance": 1234.56,
-  "tags": ["developer", "designer"],
-  "address": {
-    "street": "123 Main St",
-    "city": "New York",
-    "zipCode": 10001
-  },
-  "projects": [
-    {
-      "title": "Project Alpha",
-      "status": "completed"
-    },
-    {
-      "title": "Project Beta",
-      "status": "in-progress"
-    }
-  ]
-}`;
+const exampleJson = `[
+  { "id": 1, "name": "Alice", "role": "admin" },
+  { "id": 2, "name": "Bob", "role": "user" },
+  { "id": 3, "name": "Charlie", "role": "user" }
+]`;
 
 // Set example on load
 window.addEventListener('load', () => {

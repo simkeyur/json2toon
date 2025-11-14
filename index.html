@@ -17,26 +17,15 @@
             <div class="input-section">
                 <div class="section-header">
                     <h2>JSON Input</h2>
-                    <button id="clearInput" class="clear-btn">Clear</button>
+                    <div class="input-controls">
+                        <button id="clearInput" class="action-btn">Clear</button>
+                        <input type="file" id="fileInput" accept=".json" />
+                    </div>
                 </div>
                 <textarea id="jsonInput" placeholder="Paste your JSON here..."></textarea>
-                <div class="file-upload">
-                    <label for="fileInput" class="file-label">Or upload a JSON file</label>
-                    <input type="file" id="fileInput" accept=".json" />
-                </div>
-            </div>
-
-            <div class="controls">
-                <button id="convertBtn" class="convert-btn">Convert to TOON →</button>
-                <div class="options">
-                    <label>
-                        <input type="checkbox" id="prettyPrint" checked>
-                        Pretty Print
-                    </label>
-                    <label>
-                        <input type="checkbox" id="sortKeys">
-                        Sort Keys
-                    </label>
+                <div class="controls">
+                    <button id="prettifyBtn" class="secondary-btn">Prettify JSON</button>
+                    <button id="convertBtn" class="convert-btn">Convert to TOON →</button>
                 </div>
             </div>
 
@@ -54,25 +43,25 @@
 
         <div class="info-section">
             <h3>About TOON Format</h3>
-            <p>TOON (Typed Object Oriented Notation) is a data serialization format that extends JSON with type information and additional metadata. This converter transforms standard JSON into TOON format while preserving data structure and adding type annotations.</p>
+            <p>TOON (Token-Oriented Object Notation) is a compact data serialization format designed to reduce token usage when working with LLMs. Unlike JSON, which repeats field names for every object, TOON lists field names once and then just the values - like a lightweight table format.</p>
+            
+            <h3>Why TOON?</h3>
+            <p>JSON can be wasteful for LLMs because it repeats structure even when nothing changes. TOON cuts token usage significantly (often by ~50%) by eliminating redundant keys, quotes, and braces while maintaining the same data structure.</p>
             
             <h3>Example</h3>
             <div class="example">
                 <div class="example-block">
-                    <strong>JSON:</strong>
-                    <pre><code>{
-  "name": "John",
-  "age": 30,
-  "active": true
-}</code></pre>
+                    <strong>JSON (verbose):</strong>
+                    <pre><code>[
+  { "id": 1, "name": "Alice", "role": "admin" },
+  { "id": 2, "name": "Bob", "role": "user" }
+]</code></pre>
                 </div>
                 <div class="example-block">
-                    <strong>TOON:</strong>
-                    <pre><code>{
-  "name": {"type": "string", "value": "John"},
-  "age": {"type": "number", "value": 30},
-  "active": {"type": "boolean", "value": true}
-}</code></pre>
+                    <strong>TOON (compact):</strong>
+                    <pre><code>data[2]{id,name,role}:
+  1,Alice,admin
+  2,Bob,user</code></pre>
                 </div>
             </div>
         </div>
