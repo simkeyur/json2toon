@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON to TOON Converter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>JSON to TOON Converter</h1>
+            <p class="subtitle">Convert JSON data to TOON format easily</p>
+        </header>
+
+        <div class="converter-container">
+            <div class="input-section">
+                <div class="section-header">
+                    <h2>JSON Input</h2>
+                    <button id="clearInput" class="clear-btn">Clear</button>
+                </div>
+                <textarea id="jsonInput" placeholder="Paste your JSON here..."></textarea>
+                <div class="file-upload">
+                    <label for="fileInput" class="file-label">Or upload a JSON file</label>
+                    <input type="file" id="fileInput" accept=".json" />
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="convertBtn" class="convert-btn">Convert to TOON →</button>
+                <div class="options">
+                    <label>
+                        <input type="checkbox" id="prettyPrint" checked>
+                        Pretty Print
+                    </label>
+                    <label>
+                        <input type="checkbox" id="sortKeys">
+                        Sort Keys
+                    </label>
+                </div>
+            </div>
+
+            <div class="output-section">
+                <div class="section-header">
+                    <h2>TOON Output</h2>
+                    <div class="output-controls">
+                        <button id="copyOutput" class="action-btn">Copy</button>
+                        <button id="downloadOutput" class="action-btn">Download</button>
+                    </div>
+                </div>
+                <textarea id="toonOutput" readonly placeholder="TOON output will appear here..."></textarea>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>About TOON Format</h3>
+            <p>TOON (Typed Object Oriented Notation) is a data serialization format that extends JSON with type information and additional metadata. This converter transforms standard JSON into TOON format while preserving data structure and adding type annotations.</p>
+            
+            <h3>Example</h3>
+            <div class="example">
+                <div class="example-block">
+                    <strong>JSON:</strong>
+                    <pre><code>{
+  "name": "John",
+  "age": 30,
+  "active": true
+}</code></pre>
+                </div>
+                <div class="example-block">
+                    <strong>TOON:</strong>
+                    <pre><code>{
+  "name": {"type": "string", "value": "John"},
+  "age": {"type": "number", "value": 30},
+  "active": {"type": "boolean", "value": true}
+}</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Created with ❤️ | <a href="https://github.com/simkeyur/json2toon" target="_blank">View on GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
